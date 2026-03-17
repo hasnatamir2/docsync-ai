@@ -273,7 +273,7 @@ Out of scope for Phase 0:
 
 These rules apply to every file in the project without exception. Claude Code must follow them even when generating boilerplate or one-off utilities.
 
-### File names — always kebab-case
+### File names and Folder names — always kebab-case
 
 All files use lowercase kebab-case regardless of what they export.
 
@@ -289,6 +289,22 @@ All files use lowercase kebab-case regardless of what they export.
 ✗  githubApp.ts
 ✗  docDrafts.ts
 ✗  generateDocs.ts
+```
+
+All files use lowercase kebab-case regardless of what they export.
+
+```
+✓  convex-client-provider
+✓  github-app
+✓  doc-drafts
+✓  generate-docs
+✓  repo-reader
+✓  use-run-status          ← hooks too
+
+✗  ConvexClientProvider
+✗  githubApp
+✗  docDrafts
+✗  generateDocs
 ```
 
 Next.js reserved filenames are the only exceptions: `layout.tsx`, `page.tsx`, `route.ts`, `loading.tsx`, `error.tsx`, `not-found.tsx`, `proxy.ts`. These stay lowercase as-is — Next.js requires exact names.
