@@ -54,13 +54,14 @@ docsync-ai/
 │   ├── orgs.ts                             # Org queries/mutations
 │   ├── repos.ts                            # Repo queries/mutations
 │   ├── runs.ts                             # Run queries/mutations
-│   ├── doc-drafts.ts                       # Doc draft queries/mutations
+│   ├── doc_drafts.ts                       # Doc draft queries/mutations
+│   ├── pull_requests.ts                    # Pull request queries/mutations
 │   └── actions/
-│       ├── generate-docs.ts                # Generate mode: full repo → doc set PR
-│       └── sync-docs.ts                    # Sync mode: diff + existing docs → update PR
+│       ├── generate_docs.ts                # Generate mode: full repo → doc set PR
+│       └── sync_docs.ts                    # Sync mode: diff + existing docs → update PR
 ├── .env.local                              # Never commit this
 ├── CLAUDE.md                               # This file
-└── proxy.ts                                # Next.js 16 replacement for middleware.ts
+└── src/proxy.ts                            # Clerk middleware (Next.js 16)
 ```
 
 ## Convex schema (source of truth)
@@ -280,34 +281,44 @@ All files use lowercase kebab-case regardless of what they export.
 ```
 ✓  convex-client-provider.tsx
 ✓  github-app.ts
-✓  doc-drafts.ts
-✓  generate-docs.ts
 ✓  repo-reader.ts
 ✓  use-run-status.ts          ← hooks too
 
 ✗  ConvexClientProvider.tsx
 ✗  githubApp.ts
-✗  docDrafts.ts
-✗  generateDocs.ts
+✗  repoReader.ts
+✗  useRunStatus.ts
 ```
 
-All files use lowercase kebab-case regardless of what they export.
+All folders use lowercase kebab-case regardless of what they export.
 
 ```
 ✓  convex-client-provider
 ✓  github-app
-✓  doc-drafts
-✓  generate-docs
 ✓  repo-reader
 ✓  use-run-status          ← hooks too
 
 ✗  ConvexClientProvider
 ✗  githubApp
-✗  docDrafts
-✗  generateDocs
+✗  repoReader
+✗  useRunStatus
 ```
 
 Next.js reserved filenames are the only exceptions: `layout.tsx`, `page.tsx`, `route.ts`, `loading.tsx`, `error.tsx`, `not-found.tsx`, `proxy.ts`. These stay lowercase as-is — Next.js requires exact names.
+
+**Convex exception — `convex/` directory uses snake_case, not kebab-case.** Convex module paths only allow alphanumeric characters, underscores, and periods — hyphens are rejected at deploy time. All files directly inside `convex/` (and `convex/actions/`) must use underscores:
+
+```
+✓  convex/doc_drafts.ts
+✓  convex/pull_requests.ts
+✓  convex/actions/generate_docs.ts
+✓  convex/actions/sync_docs.ts
+
+✗  convex/doc-drafts.ts       ← deploy error: invalid path
+✗  convex/pull-requests.ts    ← deploy error: invalid path
+```
+
+This only applies inside `convex/`. All files under `src/` still use kebab-case.
 
 ### Variables and functions — minimum 3 characters, always meaningful
 
