@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { useQuery } from 'convex/react'
 import Link from 'next/link'
@@ -8,6 +9,7 @@ import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/c
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { api } from '../../../convex/_generated/api'
+import type { Id } from '../../../convex/_generated/dataModel'
 
 const GITHUB_APP_INSTALL_URL = process.env.NEXT_PUBLIC_GITHUB_APP_INSTALL_URL ?? 'https://github.com/apps'
 
@@ -94,27 +96,7 @@ export default function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {repos.map((repoRecord) => (
-              <Card key={repoRecord._id}>
-                <CardContent className="flex items-center justify-between py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
-                      <GitHubIcon />
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-medium text-foreground">{repoRecord.fullName}</span>
-                      <span className="text-xs text-muted-foreground">
-                        Default branch: {repoRecord.defaultBranch}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={repoRecord.isActive ? 'secondary' : 'outline'} className="gap-1.5">
-                      <span className={`size-1.5 rounded-full inline-block ${repoRecord.isActive ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
-                      {repoRecord.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+              <RepoCard key={repoRecord._id} repo={repoRecord} />
             ))}
           </div>
         )}
@@ -133,6 +115,200 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+interface RepoRecord {
+  _id: Id<'repos'>
+  fullName: string
+  defaultBranch: string
+  isActive: boolean
+}
+
+function RepoCard({ repo }: { repo: RepoRecord }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  const latestRun = useQuery(api.runs.getLatestRunByRepo, { repoId: repo._id })
+  const runs = useQuery(api.runs.listRunsByRepo, isExpanded ? { repoId: repo._id } : 'skip')
+  const pullRequests = useQuery(
+    api.pull_requests.listPullRequestsByRepo,
+    isExpanded ? { repoId: repo._id } : 'skip',
+  )
+
+  type PullRequestRecord = NonNullable<typeof pullRequests>[number]
+  const pullRequestsByRunId = useMemo((): Map<string, PullRequestRecord> => {
+    if (!pullRequests) return new Map()
+    return new Map(pullRequests.map((pullRequest) => [pullRequest.runId, pullRequest]))
+  }, [pullRequests])
+
+  return (
+    <Card className="overflow-hidden">
+      <CardContent
+        className="flex items-center justify-between py-4 cursor-pointer hover:bg-muted/40 transition-colors duration-150"
+        onClick={() => setIsExpanded((prev) => !prev)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="size-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+            <GitHubIcon />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-foreground">{repo.fullName}</span>
+            <span className="text-xs text-muted-foreground">
+              Default branch: {repo.defaultBranch}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant={repo.isActive ? 'secondary' : 'outline'} className="gap-1.5">
+            <span className={`size-1.5 rounded-full inline-block ${repo.isActive ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
+            {repo.isActive ? 'Active' : 'Inactive'}
+          </Badge>
+          {latestRun !== undefined && latestRun !== null && (
+            <RunStatusBadge status={latestRun.status} />
+          )}
+          <ChevronDownIcon isExpanded={isExpanded} />
+        </div>
+      </CardContent>
+
+      {isExpanded && (
+        <div className="border-t border-border">
+          {runs === undefined ? (
+            <RunHistorySkeleton />
+          ) : runs.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+              No runs yet. Trigger a generate or wait for a PR to merge.
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {runs.map((run) => (
+                <RunRow
+                  key={run._id}
+                  run={run}
+                  pullRequest={pullRequestsByRunId.get(run._id) ?? null}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+interface RunRowProps {
+  run: {
+    _id: Id<'runs'>
+    mode: 'generate' | 'sync'
+    status: RunStatus
+    triggerPrNumber?: number
+    triggerPrTitle?: string
+    confidenceScore?: number
+    startedAt: number
+    completedAt?: number
+  }
+  pullRequest: { githubPrUrl: string; githubPrNumber: number } | null
+}
+
+function RunRow({ run, pullRequest }: RunRowProps) {
+  const description =
+    run.mode === 'sync' && run.triggerPrTitle
+      ? run.triggerPrTitle
+      : run.mode === 'generate'
+        ? 'Initial docs generation'
+        : 'Sync run'
+
+  const prLabel =
+    run.mode === 'sync' && run.triggerPrNumber !== undefined
+      ? `#${run.triggerPrNumber}`
+      : null
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors duration-150">
+      <div className="flex items-center gap-2 w-[72px] shrink-0">
+        <Badge
+          variant={run.mode === 'generate' ? 'default' : 'secondary'}
+          className="text-[10px] px-1.5 py-0 uppercase tracking-wide"
+        >
+          {run.mode === 'generate' ? 'Gen' : 'Sync'}
+        </Badge>
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-foreground truncate">{description}</p>
+        {prLabel !== null && (
+          <p className="text-xs text-muted-foreground mt-0.5">Triggered by {prLabel}</p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-xs text-muted-foreground">{formatRelativeTime(run.startedAt)}</span>
+        <RunStatusBadge status={run.status} />
+        {pullRequest !== null ? (
+          <a
+            href={pullRequest.githubPrUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(clickEvent) => clickEvent.stopPropagation()}
+            className="text-muted-foreground hover:text-foreground transition-colors duration-150"
+            aria-label={`Open PR #${pullRequest.githubPrNumber} on GitHub`}
+          >
+            <ExternalLinkIcon />
+          </a>
+        ) : (
+          <div className="size-3.5" />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RunHistorySkeleton() {
+  return (
+    <div className="divide-y divide-border">
+      {[1, 2, 3].map((num) => (
+        <div key={num} className="flex items-center gap-3 px-4 py-3">
+          <div className="h-4 w-10 rounded-full bg-muted animate-pulse shrink-0" />
+          <div className="flex-1 h-3.5 rounded-full bg-muted animate-pulse" />
+          <div className="h-4 w-20 rounded-full bg-muted animate-pulse shrink-0" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function formatRelativeTime(timestamp: number): string {
+  const diffMs = Date.now() - timestamp
+  const diffMins = Math.floor(diffMs / 60_000)
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 30) return `${diffDays}d ago`
+  const diffMonths = Math.floor(diffDays / 30)
+  return `${diffMonths}mo ago`
+}
+
+function ChevronDownIcon({ isExpanded }: { isExpanded: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className={`size-3.5 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+    </svg>
+  )
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-3.5" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+    </svg>
   )
 }
 

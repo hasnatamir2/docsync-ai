@@ -20,6 +20,17 @@ export const listRunsByRepo = query({
   },
 })
 
+export const getLatestRunByRepo = query({
+  args: { repoId: v.id('repos') },
+  handler: async (context, args) => {
+    return context.db
+      .query('runs')
+      .withIndex('by_repo', (queryBuilder) => queryBuilder.eq('repoId', args.repoId))
+      .order('desc')
+      .first()
+  },
+})
+
 export const createRun = mutation({
   args: {
     repoId: v.id('repos'),
