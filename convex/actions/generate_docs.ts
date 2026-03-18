@@ -1,7 +1,7 @@
 "use node"
 
 import { internalAction } from '../_generated/server'
-import { internal } from '../_generated/api'
+import { api } from '../_generated/api'
 import { v } from 'convex/values'
 import type { Id } from '../_generated/dataModel'
 import { getInstallationOctokit, createDocsPullRequest } from '../../src/lib/github'
@@ -170,14 +170,14 @@ export const generateRepoDocs = internalAction({
   },
   handler: async (actionContext, args) => {
     // 1. Mark run as running
-    await actionContext.runMutation(internal.runs.updateRunStatus, {
+    await actionContext.runMutation(api.runs.updateRunStatus, {
       runId: args.runId,
       status: 'running',
     })
 
     try {
       // 2. Fetch repo record from DB
-      const repoRecord = await actionContext.runQuery(internal.repos.getRepo, {
+      const repoRecord = await actionContext.runQuery(api.repos.getRepo, {
         repoId: args.repoId,
       })
       if (repoRecord === null) {
@@ -246,7 +246,7 @@ export const generateRepoDocs = internalAction({
 
       // Early exit if plan has nothing to generate
       if (docPlan.docTypes.length === 0) {
-        await actionContext.runMutation(internal.runs.updateRunStatus, {
+        await actionContext.runMutation(api.runs.updateRunStatus, {
           runId: args.runId,
           status: 'completed',
           errorMessage: 'Doc plan returned no document types — nothing to generate.',
@@ -286,7 +286,7 @@ export const generateRepoDocs = internalAction({
           throw new Error(`Write step returned no text content for doc type: ${docType}`)
         }
 
-        const docDraftId = await actionContext.runMutation(internal.doc_drafts.createDocDraft, {
+        const docDraftId = await actionContext.runMutation(api.doc_drafts.createDocDraft, {
           runId: args.runId,
           docType,
           filePath,
@@ -329,7 +329,7 @@ export const generateRepoDocs = internalAction({
       })
 
       // ── Record PR and update draft statuses ─────────────────────────────────
-      await actionContext.runMutation(internal.pull_requests.createPullRequest, {
+      await actionContext.runMutation(api.pull_requests.createPullRequest, {
         runId: args.runId,
         repoId: args.repoId,
         githubPrNumber: prCreationResult.githubPrNumber,
@@ -338,14 +338,14 @@ export const generateRepoDocs = internalAction({
       })
 
       for (const docDraftEntry of docDraftEntries) {
-        await actionContext.runMutation(internal.doc_drafts.updateDocDraftStatus, {
+        await actionContext.runMutation(api.doc_drafts.updateDocDraftStatus, {
           docDraftId: docDraftEntry.docDraftId,
           status: 'pr_opened',
         })
       }
 
       // ── Mark run completed ───────────────────────────────────────────────────
-      await actionContext.runMutation(internal.runs.updateRunStatus, {
+      await actionContext.runMutation(api.runs.updateRunStatus, {
         runId: args.runId,
         status: 'completed',
       })
@@ -355,7 +355,7 @@ export const generateRepoDocs = internalAction({
           ? caughtError.message
           : 'Unknown error in generateRepoDocs action'
 
-      await actionContext.runMutation(internal.runs.updateRunStatus, {
+      await actionContext.runMutation(api.runs.updateRunStatus, {
         runId: args.runId,
         status: 'failed',
         errorMessage,

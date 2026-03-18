@@ -1,7 +1,7 @@
 "use node"
 
 import { internalAction } from '../_generated/server'
-import { internal } from '../_generated/api'
+import { api } from '../_generated/api'
 import { v } from 'convex/values'
 import type { Id } from '../_generated/dataModel'
 import { getInstallationOctokit, createDocsPullRequest } from '../../src/lib/github'
@@ -261,14 +261,14 @@ export const syncRepoDocsOnMerge = internalAction({
   },
   handler: async (actionContext, args) => {
     // 1. Mark run as running
-    await actionContext.runMutation(internal.runs.updateRunStatus, {
+    await actionContext.runMutation(api.runs.updateRunStatus, {
       runId: args.runId,
       status: 'running',
     })
 
     try {
       // 2. Fetch repo record
-      const repoRecord = await actionContext.runQuery(internal.repos.getRepo, {
+      const repoRecord = await actionContext.runQuery(api.repos.getRepo, {
         repoId: args.repoId,
       })
       if (repoRecord === null) {
@@ -357,7 +357,7 @@ export const syncRepoDocsOnMerge = internalAction({
       // ── Confidence gate ──────────────────────────────────────────────────────
       const isConfidenceAboveThreshold = syncDocPlan.confidence >= CONFIDENCE_THRESHOLD
       if (!isConfidenceAboveThreshold || syncDocPlan.affectedDocTypes.length === 0) {
-        await actionContext.runMutation(internal.runs.updateRunStatus, {
+        await actionContext.runMutation(api.runs.updateRunStatus, {
           runId: args.runId,
           status: 'suppressed',
           confidenceScore: syncDocPlan.confidence,
@@ -405,7 +405,7 @@ export const syncRepoDocsOnMerge = internalAction({
           throw new Error(`Write step returned no text content for doc type: ${docType}`)
         }
 
-        const docDraftId = await actionContext.runMutation(internal.doc_drafts.createDocDraft, {
+        const docDraftId = await actionContext.runMutation(api.doc_drafts.createDocDraft, {
           runId: args.runId,
           docType,
           filePath,
@@ -448,7 +448,7 @@ export const syncRepoDocsOnMerge = internalAction({
       })
 
       // ── Record PR and update draft statuses ─────────────────────────────────
-      await actionContext.runMutation(internal.pull_requests.createPullRequest, {
+      await actionContext.runMutation(api.pull_requests.createPullRequest, {
         runId: args.runId,
         repoId: args.repoId,
         githubPrNumber: prCreationResult.githubPrNumber,
@@ -457,14 +457,14 @@ export const syncRepoDocsOnMerge = internalAction({
       })
 
       for (const docDraftEntry of docDraftEntries) {
-        await actionContext.runMutation(internal.doc_drafts.updateDocDraftStatus, {
+        await actionContext.runMutation(api.doc_drafts.updateDocDraftStatus, {
           docDraftId: docDraftEntry.docDraftId,
           status: 'pr_opened',
         })
       }
 
       // ── Mark run completed ───────────────────────────────────────────────────
-      await actionContext.runMutation(internal.runs.updateRunStatus, {
+      await actionContext.runMutation(api.runs.updateRunStatus, {
         runId: args.runId,
         status: 'completed',
         confidenceScore: syncDocPlan.confidence,
@@ -475,7 +475,7 @@ export const syncRepoDocsOnMerge = internalAction({
           ? caughtError.message
           : 'Unknown error in syncRepoDocsOnMerge action'
 
-      await actionContext.runMutation(internal.runs.updateRunStatus, {
+      await actionContext.runMutation(api.runs.updateRunStatus, {
         runId: args.runId,
         status: 'failed',
         errorMessage,
