@@ -10,8 +10,10 @@ const convexClient = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
 export async function GET(request: NextRequest): Promise<Response> {
   const { userId } = await auth()
+  console.log('[github-callback] userId:', userId, 'url:', request.url)
 
   if (!userId) {
+    console.warn('[github-callback] no userId — user not authenticated, redirecting to /')
     return Response.redirect(new URL('/', request.url))
   }
 
