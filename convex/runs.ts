@@ -54,7 +54,12 @@ export const scheduleSyncRun = mutation({
         queryBuilder.eq('githubInstallationId', args.githubInstallationId),
       )
       .unique()
-    if (orgRecord === null) return null
+    if (orgRecord === null) {
+      console.warn(
+        `scheduleSyncRun: no org found for installationId=${args.githubInstallationId} — skipping`,
+      )
+      return null
+    }
 
     // 2. Repo lookup
     const repoRecord = await context.db
@@ -63,7 +68,18 @@ export const scheduleSyncRun = mutation({
         queryBuilder.eq('githubRepoId', args.githubRepoId),
       )
       .unique()
-    if (repoRecord === null || !repoRecord.isActive) return null
+    if (repoRecord === null) {
+      console.warn(
+        `scheduleSyncRun: no repo found for githubRepoId=${args.githubRepoId} — skipping`,
+      )
+      return null
+    }
+    if (!repoRecord.isActive) {
+      console.warn(
+        `scheduleSyncRun: repo ${repoRecord.fullName} is inactive — skipping`,
+      )
+      return null
+    }
 
     // 3. Idempotency guard — return existing run if webhook is retried
     const existingRun = await context.db
