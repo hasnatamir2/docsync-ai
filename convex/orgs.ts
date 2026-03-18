@@ -25,6 +25,20 @@ export const getOrgByInstallation = query({
   },
 })
 
+export const updateOrgInstallation = mutation({
+  args: {
+    orgId: v.id('orgs'),
+    githubInstallationId: v.number(),
+    githubLogin: v.string(),
+  },
+  handler: async (context, args) => {
+    await context.db.patch(args.orgId, {
+      githubInstallationId: args.githubInstallationId,
+      githubLogin: args.githubLogin,
+    })
+  },
+})
+
 export const createOrg = mutation({
   args: {
     clerkUserId: v.string(),
