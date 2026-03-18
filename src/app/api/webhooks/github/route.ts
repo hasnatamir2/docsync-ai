@@ -48,10 +48,12 @@ export async function POST(webhookRequest: Request): Promise<Response> {
 
   const isValidSignature = await webhooksVerifier.verify(rawBody, signatureHeader)
   if (!isValidSignature) {
+    console.warn('[webhook] invalid signature')
     return new Response('Invalid webhook signature', { status: 401 })
   }
 
   const eventType = webhookRequest.headers.get('x-github-event')
+  console.log('[webhook] event:', eventType)
 
   if (eventType === 'installation_repositories') {
     return handleInstallationRepositories(rawBody)
@@ -65,24 +67,30 @@ export async function POST(webhookRequest: Request): Promise<Response> {
   const isPullRequestMerged =
     webhookPayload.action === 'closed' && webhookPayload.pull_request.merged === true
 
+  console.log('[webhook] pull_request action:', webhookPayload.action, 'merged:', webhookPayload.pull_request.merged, 'repo:', webhookPayload.repository.full_name)
+
   if (!isPullRequestMerged) {
     return new Response('PR event ignored — not a merge', { status: 200 })
   }
 
   const githubInstallationId = webhookPayload.installation?.id
   if (githubInstallationId === undefined) {
+    console.error('[webhook] missing installation ID in payload')
     return new Response('Missing installation ID in webhook payload', { status: 400 })
   }
 
+  console.log('[webhook] scheduling sync run — installationId:', githubInstallationId, 'repoId:', webhookPayload.repository.id, 'pr:', webhookPayload.pull_request.number)
+
   try {
-    await convexClient.mutation(api.runs.scheduleSyncRun, {
+    const runId = await convexClient.mutation(api.runs.scheduleSyncRun, {
       githubInstallationId,
       githubRepoId: webhookPayload.repository.id,
       triggerPrNumber: webhookPayload.pull_request.number,
       triggerPrTitle: webhookPayload.pull_request.title,
     })
+    console.log('[webhook] scheduleSyncRun result:', runId)
   } catch (convexError) {
-    console.error('Failed to schedule sync run in Convex:', convexError)
+    console.error('[webhook] failed to schedule sync run:', convexError instanceof Error ? convexError.message : convexError)
     return new Response('Internal error scheduling sync run', { status: 500 })
   }
 
@@ -93,13 +101,16 @@ async function handleInstallationRepositories(rawBody: string): Promise<Response
   const webhookPayload = JSON.parse(rawBody) as GitHubInstallationRepositoriesPayload
 
   const githubInstallationId = webhookPayload.installation.id
+  console.log('[webhook] installation_repositories action:', webhookPayload.action, 'installationId:', githubInstallationId, 'added:', webhookPayload.repositories_added.map((repo) => repo.full_name), 'removed:', webhookPayload.repositories_removed.map((repo) => repo.full_name))
 
   const orgRecord = await convexClient.query(api.orgs.getOrgByInstallation, {
     githubInstallationId,
   })
+  console.log('[webhook] orgRecord for installationId', githubInstallationId, ':', orgRecord ? orgRecord._id : null)
 
   // Org hasn't been registered yet — user needs to go through the Setup URL flow first
   if (!orgRecord) {
+    console.warn('[webhook] org not found for installationId:', githubInstallationId, '— skipping repo sync')
     return new Response('Org not found — skipping', { status: 200 })
   }
 

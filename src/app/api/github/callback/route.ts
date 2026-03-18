@@ -26,19 +26,26 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const githubInstallationId = parseInt(installationIdParam, 10)
+  console.log('[github-callback] installationId:', githubInstallationId, 'setupAction:', setupAction)
 
   try {
+    console.log('[github-callback] calling getInstallationOctokit...')
     const installationOctokit = await getInstallationOctokit(githubInstallationId)
+    console.log('[github-callback] getInstallationOctokit OK')
 
+    console.log('[github-callback] listing accessible repos...')
     const repoListResponse = await installationOctokit.rest.apps.listReposAccessibleToInstallation({
       per_page: 100,
     })
     const accessibleRepos = repoListResponse.data.repositories
     const githubLogin = accessibleRepos[0]?.owner.login ?? `installation-${githubInstallationId}`
+    console.log('[github-callback] accessible repos:', accessibleRepos.map((repo) => repo.full_name), 'githubLogin:', githubLogin)
 
+    console.log('[github-callback] querying existing org...')
     const existingOrg = await convexClient.query(api.orgs.getOrgByInstallation, {
       githubInstallationId,
     })
+    console.log('[github-callback] existingOrg:', existingOrg ? existingOrg._id : null)
 
     if (existingOrg) {
       // Org already registered — sync any newly added repos
@@ -47,6 +54,7 @@ export async function GET(request: NextRequest): Promise<Response> {
           githubRepoId: repoData.id,
         })
         if (!existingRepo) {
+          console.log('[github-callback] creating repo:', repoData.full_name)
           await convexClient.mutation(api.repos.createRepo, {
             orgId: existingOrg._id,
             githubRepoId: repoData.id,
@@ -54,17 +62,23 @@ export async function GET(request: NextRequest): Promise<Response> {
             defaultBranch: repoData.default_branch,
             docTypes: ['readme', 'api_reference'],
           })
+          console.log('[github-callback] repo created:', repoData.full_name)
+        } else {
+          console.log('[github-callback] repo already exists:', repoData.full_name)
         }
       }
     } else {
       // First installation — create org then repos
+      console.log('[github-callback] creating org for installationId:', githubInstallationId)
       const newOrgId = await convexClient.mutation(api.orgs.createOrg, {
         clerkUserId: userId,
         githubInstallationId,
         githubLogin,
       })
+      console.log('[github-callback] org created:', newOrgId)
 
       for (const repoData of accessibleRepos) {
+        console.log('[github-callback] creating repo:', repoData.full_name)
         await convexClient.mutation(api.repos.createRepo, {
           orgId: newOrgId,
           githubRepoId: repoData.id,
@@ -72,10 +86,13 @@ export async function GET(request: NextRequest): Promise<Response> {
           defaultBranch: repoData.default_branch,
           docTypes: ['readme', 'api_reference'],
         })
+        console.log('[github-callback] repo created:', repoData.full_name)
       }
     }
+    console.log('[github-callback] setup complete, redirecting to dashboard')
   } catch (callbackError) {
-    console.error('GitHub App callback error:', callbackError)
+    console.error('[github-callback] error:', callbackError instanceof Error ? callbackError.message : callbackError)
+    console.error('[github-callback] stack:', callbackError instanceof Error ? callbackError.stack : 'no stack')
     return Response.redirect(new URL('/dashboard?setup_error=1', request.url))
   }
 
