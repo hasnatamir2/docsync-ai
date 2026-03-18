@@ -74,6 +74,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     }
   } catch (callbackError) {
     console.error('GitHub App callback error:', callbackError)
+    return Response.redirect(new URL('/dashboard?setup_error=1', request.url))
   }
 
   return Response.redirect(new URL('/dashboard', request.url))
