@@ -41,11 +41,28 @@ export async function GET(request: NextRequest): Promise<Response> {
     const githubLogin = accessibleRepos[0]?.owner.login ?? `installation-${githubInstallationId}`
     console.log('[github-callback] accessible repos:', accessibleRepos.map((repo) => repo.full_name), 'githubLogin:', githubLogin)
 
-    console.log('[github-callback] querying existing org...')
-    const existingOrg = await convexClient.query(api.orgs.getOrgByInstallation, {
+    console.log('[github-callback] querying existing org by installationId...')
+    let existingOrg = await convexClient.query(api.orgs.getOrgByInstallation, {
       githubInstallationId,
     })
-    console.log('[github-callback] existingOrg:', existingOrg ? existingOrg._id : null)
+    console.log('[github-callback] existingOrg by installationId:', existingOrg ? existingOrg._id : null)
+
+    // Reinstall path — same Clerk user, new installation ID (uninstall + reinstall)
+    if (!existingOrg) {
+      console.log('[github-callback] not found by installationId, checking by clerkUserId...')
+      const orgByClerkUser = await convexClient.query(api.orgs.getOrgByClerkUser, {
+        clerkUserId: userId,
+      })
+      if (orgByClerkUser) {
+        console.log('[github-callback] found existing org by clerkUserId:', orgByClerkUser._id, '— updating installationId from', orgByClerkUser.githubInstallationId, 'to', githubInstallationId)
+        await convexClient.mutation(api.orgs.updateOrgInstallation, {
+          orgId: orgByClerkUser._id,
+          githubInstallationId,
+          githubLogin,
+        })
+        existingOrg = { ...orgByClerkUser, githubInstallationId, githubLogin }
+      }
+    }
 
     if (existingOrg) {
       // Org already registered — sync any newly added repos
