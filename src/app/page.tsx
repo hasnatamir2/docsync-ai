@@ -37,14 +37,16 @@ export default function Home() {
       </header>
 
       {/* Hero */}
-      <main className="flex flex-1 flex-col items-center justify-center px-4 pt-24 pb-16">
-        <div className="mx-auto max-w-2xl flex flex-col items-center gap-6 text-center">
+      <main className="relative flex flex-1 flex-col items-center justify-center px-4 pt-24 pb-16 overflow-hidden">
+        {/* Ambient glow */}
+        <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 h-[28rem] w-[56rem] rounded-full bg-primary/8 blur-3xl" aria-hidden="true" />
+        <div className="mx-auto max-w-2xl flex flex-col items-center gap-6 text-center relative">
           <Badge variant="outline" className="gap-1.5 text-xs font-normal">
             <span className="size-1.5 rounded-full bg-emerald-500 inline-block" />
             Docs that stay in sync with your code
           </Badge>
 
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl text-foreground">
             Never write stale docs again
           </h1>
 
@@ -82,9 +84,9 @@ export default function Home() {
           {FEATURES.map((feature) => (
             <div
               key={feature.title}
-              className="rounded-xl border border-border bg-card p-5 flex flex-col gap-3"
+              className="rounded-xl border border-border bg-card p-5 flex flex-col gap-3 transition-colors hover:border-border/60"
             >
-              <div className="size-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+              <div className={`size-8 rounded-lg flex items-center justify-center ${feature.iconClassName}`}>
                 {feature.icon}
               </div>
               <div className="flex flex-col gap-1">
@@ -110,16 +112,19 @@ const FEATURES = [
     title: 'Auto-generate docs',
     description: 'Connect a repo and get a full README + API reference PR in minutes, generated from your source code.',
     icon: <SparklesIcon />,
+    iconClassName: 'bg-primary/10 text-primary',
   },
   {
     title: 'Sync on every merge',
     description: 'Every merged PR triggers a diff analysis. If docs are affected, a sync PR is opened automatically.',
     icon: <ArrowPathIcon />,
+    iconClassName: 'bg-emerald-500/10 text-emerald-400',
   },
   {
     title: 'Confidence scoring',
     description: "Changes below 70% confidence are suppressed — you only get PRs when something actually needs updating.",
     icon: <ShieldCheckIcon />,
+    iconClassName: 'bg-violet-500/10 text-violet-400',
   },
 ]
 

@@ -36,7 +36,7 @@ export default function DashboardPage() {
               <span className="text-sm font-semibold text-foreground">DocSync AI</span>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">beta</Badge>
             </Link>
-            <Separator orientation="vertical" className="h-4" />
+            <Separator orientation="vertical" className="" />
             <nav className="flex items-center gap-1">
               <Link
                 href="/dashboard"
@@ -69,11 +69,11 @@ export default function DashboardPage() {
         </div>
 
         {isLoading ? (
-          <Card>
-            <CardContent className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-              Loading…
-            </CardContent>
-          </Card>
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3].map((num) => (
+              <RepoCardSkeleton key={num} />
+            ))}
+          </div>
         ) : !org || !repos || repos.length === 0 ? (
           /* Empty state */
           <Card className="border-dashed">
@@ -139,6 +139,23 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+function RepoCardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="flex items-center justify-between py-4">
+        <div className="flex items-center gap-3">
+          <div className="size-8 rounded-lg bg-muted animate-pulse" />
+          <div className="flex flex-col gap-1.5">
+            <div className="h-3.5 w-36 rounded-full bg-muted animate-pulse" />
+            <div className="h-3 w-28 rounded-full bg-muted/60 animate-pulse" />
+          </div>
+        </div>
+        <div className="h-5 w-14 rounded-full bg-muted animate-pulse" />
+      </CardContent>
+    </Card>
   )
 }
 
