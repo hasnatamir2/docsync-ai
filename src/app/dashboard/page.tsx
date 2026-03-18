@@ -28,7 +28,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Top nav */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-sm">
         <div className="mx-auto max-w-5xl px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -50,9 +49,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Main content */}
       <main className="flex-1 mx-auto max-w-5xl w-full px-4 py-10">
-        {/* Page header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-xl font-semibold text-foreground">Your repositories</h1>
@@ -75,7 +72,6 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : !org || !repos || repos.length === 0 ? (
-          /* Empty state */
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
               <div className="size-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
@@ -96,7 +92,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ) : (
-          /* Repo list */
           <div className="flex flex-col gap-3">
             {repos.map((repoRecord) => (
               <Card key={repoRecord._id}>
@@ -124,7 +119,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Run status reference */}
         <div className="mt-10">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
             Run status legend
