@@ -224,7 +224,7 @@ function RunRow({ run, pullRequest }: RunRowProps) {
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors duration-150">
-      <div className="flex items-center gap-2 w-[72px] shrink-0">
+      <div className="flex items-center gap-2 w-18 shrink-0">
         <Badge
           variant={run.mode === 'generate' ? 'default' : 'secondary'}
           className="text-[10px] px-1.5 py-0 uppercase tracking-wide"

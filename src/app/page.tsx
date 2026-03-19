@@ -36,7 +36,7 @@ export default function Home() {
       </header>
 
       <main className="relative flex flex-1 flex-col items-center justify-center px-4 pt-24 pb-16 overflow-hidden">
-        <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 h-[28rem] w-[56rem] rounded-full bg-primary/8 blur-3xl" aria-hidden="true" />
+        <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 h-112 w-4xl rounded-full bg-primary/8 blur-3xl" aria-hidden="true" />
         <div className="mx-auto max-w-2xl flex flex-col items-center gap-6 text-center relative">
           <Badge variant="outline" className="gap-1.5 text-xs font-normal">
             <span className="size-1.5 rounded-full bg-emerald-500 inline-block" />
